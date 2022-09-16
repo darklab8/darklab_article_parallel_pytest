@@ -46,9 +46,9 @@ class Args:
         )
         parser.add_argument(
             "--dry",
-            action=argparse.BooleanOptionalAction,
-            help="print commands only",
-            default=False,
+            type=str,
+            help="print commands only, add any value to invoke",
+            default="",
         )
 
         args, other_args = parser.parse_known_args(args)
@@ -65,7 +65,7 @@ class Args:
 
     @property
     def dry(self) -> bool:
-        return self._args.dry
+        return bool(self._args.dry)
 
     @property
     def number_of_splits(self) -> int:

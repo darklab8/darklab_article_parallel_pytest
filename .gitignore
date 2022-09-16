@@ -4,3 +4,4 @@ __pycache__/
 junit*.xml
 unit*.xml
 .coverage*
+coverage.xml
