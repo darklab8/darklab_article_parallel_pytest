@@ -1,8 +1,12 @@
 # Parallel CI agnostic python testing in Github Actions
 
+## Problem:
+
+we have around 5000 unit and integration tests in a Django backend API project, which we test with pytest. They take half of an hour to finish themselves locally or in Github Actions CI. As result they produce coverage.xml and junit.xml exported into GA plugins to visualize results with better GUI. We wish to run them faster.
+
 ## Introdicution to existing environment
 
-At a work project we are using docker-compose to raise dev environment
+We are using docker-compose like below to raise dev environment
 
 ```yaml
 version: '3.8'
@@ -31,7 +35,7 @@ services:
     build: .
 ```
 
-we have around 5000 unit and integration tests in a Django project, which we test with pytest. All of them are run pretty much runnable with command like this one in GIthub Actions:
+All of our tests are run pretty much with command like this one in GIthub Actions:
 
 ```bash
 docker-compose run -v $(pwd):/code -u 0 app pytest --cov=. --junit-xml=unit.xml .
@@ -73,7 +77,7 @@ As artifacts of a test run, we produce `unit.xml`, and `coverage.xml` files, to 
 
 ## Task definition
 
-Usually people assume to use to use [pytest-xdist](https://pypi.org/project/pytest-xdist/) in python ecosystem in order to have tests runable in parallel. I was offered to collect flappy tests data in datadog, and after having them analyzed to fix them so that nothing would prevent their running in pytest-xdist. We needed to run our CI tests faster :)
+Usually people assume to use to use [pytest-xdist](https://pypi.org/project/pytest-xdist/) in python ecosystem in order to have tests runable in parallel. I was offered to collect flappy tests data in datadog, and after having them analyzed to fix them so that nothing would prevent their running in pytest-xdist. We needed to run our tests faster :)
 
 ## Analysis
 
@@ -81,7 +85,7 @@ First collected broken tests had wrongly working Django translation, which is de
 
 > The GNU Gettext runtime supports only one locale per process. It is not thread-safe to use multiple locales and encodings in the same process. This is perfectly fine for applications that interact directly with a single user like most GUI applications, but is problematic for services and servers.
 
-After having found an interesting source of information [at this page](https://stackoverflow.com/questions/45733763/pytest-run-tests-parallel), we can assume that default method to run pytest uses multithreading, but multiprocessing is clearly possible as well. (See code below). It can fix part of test problems at least.
+After having found an interesting source of information [at this page](https://stackoverflow.com/questions/45733763/pytest-run-tests-parallel), we can assume that default method to run pytest looks like uses multithreading, but multiprocessing is clearly possible as well. (See code below). It can fix part of test problems at least.
 
 ```bash
 pip install pytest-xdist
@@ -105,7 +109,7 @@ pytest --dist=each --tx socket=localhost:8889 --tx socket=localhost:8890
 ```
 
 Further collecting data from datadog, there were tests broken because tests used cache in shared storage `redis`
-Another tests became broken because during count of SQL requests made by ORM, it made more than necessary, because another process was running query to db too. Which allowed making conclusion that having shared side car container `db`, made tests broken just because they use same db instance.
+Another tests became broken because during count of SQL requests made by ORM. It made more than necessary, because another process was running query to db too. Which allowed making conclusion that having shared side car container `db`, made tests broken just because they use same db instance.
 
 It became obvious, that despite recommendations to fix caching using in memory solution, we would be encountering one or another new reasons why tests are broken again and again.
 
@@ -116,7 +120,7 @@ It allows us to make next conclusion, that if we are using pytest-xdist:
 
 ## Solution
 
-Instead of using pytest-xdist... I realized just to split pytest tests into groups. Luckily there is even library for this - [pytest-split](https://pypi.org/project/pytest-split/]. Each group of tests we will be running in its own raised docker-compose group of containers, each process would be having its own db instance, redis instance and whatever else side car dependency needed. Thus, it would be perfect imitation for tests being run still in sequence instead of being run in parallel :) The only little problem we need to solve after that, with having merged coverage and junit output results for out Github Actions GUI.
+Instead of using pytest-xdist... I realized just to split pytest tests into groups. Luckily there is even library for this - [pytest-split](https://pypi.org/project/pytest-split/]. Each group of tests we will be running in its own raised docker-compose group of containers, each process would be having its own db instance, redis instance and whatever else side car dependency needed. Thus, it would be perfect imitation for tests being run still in sequence instead of being run in parallel :) The only little problem we need to solve after that, with having merged coverage and junit output results for our Github Actions GUI.
 
 Since we are in Python, the solution is implemented in python as well, with the help of `subprocess` library for multiprocessing and `argparse` library to have better self documented interface.
 
@@ -131,7 +135,33 @@ Firstly we raise self hosted Github Actions runner with available docker-compose
 
 * Just pushing any code to master or opening pull request to merge commits to master :) You see full code of [a solution here](https://github.com/darklab8/darklab_article_parallel_pytest)
 
+under the hood it does:
+
+```
+checking out code if repository into CI run
+
+building if necessary image and assigning it tag name
+
+opening multiple sub processes and each runs its own docker-compose with unique -p project_name in order to avoid container reusage.
+results are outputed as reports/junit_{number of process}.xml and reports/.coverage_{number of process}.xml
+
+we run script to merge resulting coverage results into .coverage file and junit results into single file as well
+
+publishing results into Github GUI
+```
+
 ##### Debugging tips
 
 python3 -m make parallel_pytest --dry # can help you to run commands only without running them
 or just run tests with less amount of selected tests.
+
+## Conclusion
+
+* Our tests are now runable in parallel and we can enjoy having them ran faster:
+  * 1 Core = 24 minutes 40 secs (no parallelism)
+  * 2 core = 15 minutes 31 secs
+  * 6 core = 8 minutes (pc with intel i5-10400 6 core/12threaded processor)
+* We haven't changed anything of a working code to make it more multithreading/multiprocessing safer. We solved issue at level above it. We don't need to keep in a future our code any safer than it is already.
+* We kept code running with side car containers with postgresql, redis or anything else that is needed, thus having less difference between dev and prod. Thus keeping following rule 10th rule of [The Twelve-Factor app](https://12factor.net/)
+* We received solution universal enough to be reapplied to any other repository needing to be speed up
+* We kept our paradigm of being CI agnostic and can replicate our solution easily locally.
