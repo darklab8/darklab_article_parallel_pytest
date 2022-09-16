@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request: {}
+  push:
+    branches: ["master"]
+    
+jobs:
+  parallel-pytest:
+    name: Unit tests
+    runs-on: [self-hosted, linux, x64]
+    needs: build-docker-image
+    permissions:
+      checks: write
+      contents: write
+      issues: read
+      pull-requests: write
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v2
+      - name: running tests
+        run: >
+          python3 -m make parallel_pytest
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        continue-on-error: true
+        with:
+          files: unit.xml
+          check_name: Pytest tests
+      - name: Display coverage
+        if: always()
+        continue-on-error: true
+        uses: ewjoachim/coverage-comment-action@v1
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          COVERAGE_FILE: coverage.xml

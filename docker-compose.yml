@@ -1,0 +1,31 @@
+x-definitions:
+
+  x-depends-on: &depends_on
+    links:
+      - db
+      - redis
+    depends_on:
+      - db
+      - redis
+
+version: '3.8'
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: default
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    expose:
+      - "5432"
+  redis:
+    image: redis
+    expose:
+      - "6379"
+  app:
+    <<: *depends_on
+    build: .
+  ci_app:
+    <<: *depends_on
+    image: "${IMAGE-clearly_undefined_image}"

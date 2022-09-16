@@ -1,0 +1,6 @@
+reports/
+.pytest_cache/
+__pycache__/
+junit*.xml
+unit*.xml
+.coverage*

@@ -1,0 +1,10 @@
+# just for side car containers check
+psycopg2-binary
+redis
+
+# core stuff
+pytest
+pytest-cov
+pytest-split
+junitparser
+coverage 
