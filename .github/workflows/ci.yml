@@ -9,7 +9,6 @@ jobs:
   parallel-pytest:
     name: Unit tests
     runs-on: [self-hosted, linux, x64]
-    needs: build-docker-image
     permissions:
       checks: write
       contents: write
