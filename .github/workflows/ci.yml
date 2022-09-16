@@ -8,7 +8,7 @@ on:
 jobs:
   parallel-pytest:
     name: Unit tests
-    runs-on: [self-hosted, linux, x64]
+    runs-on: self-hosted
     permissions:
       checks: write
       contents: write
