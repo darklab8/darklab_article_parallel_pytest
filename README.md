@@ -189,5 +189,5 @@ or just run tests with less amount of selected tests.
 ## Future possible steps
 
 * Refactoring code to be more universal to become third party library reusable for any other repo
-* Probably making parallel_pytest script available as compiled binary in golang? In order to be available as lightweight dependency installations free solution reusable at any repository with minimal time and weight to add
-* Same principles to applications testing can be applied to any other language, as long as solution to split tests is found
+* Making parallel_pytest script available as compiled binary in golang? In order to be available as lightweight dependency installations free solution reusable at any repository with minimal time and weight to add
+* Testing with same solution applications in other languages, as long as solution to split tests specific to language is found
