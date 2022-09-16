@@ -73,7 +73,7 @@ As artifacts of a test run, we produce `unit.xml`, and `coverage.xml` files, to 
 
 ## Task definition
 
-Usually people assume to use to use (pytest-xdist)[https://pypi.org/project/pytest-xdist/] in python ecosystem in order to have tests runable in parallel. I was offered to collect flappy tests data in datadog, and after having them analyzed to fix them so that nothing would prevent their running in pytest-xdist. We needed to run our CI tests faster :)
+Usually people assume to use to use [pytest-xdist](https://pypi.org/project/pytest-xdist/) in python ecosystem in order to have tests runable in parallel. I was offered to collect flappy tests data in datadog, and after having them analyzed to fix them so that nothing would prevent their running in pytest-xdist. We needed to run our CI tests faster :)
 
 ## Analysis
 
@@ -116,7 +116,7 @@ It allows us to make next conclusion, that if we are using pytest-xdist:
 
 ## Solution
 
-Instead of using pytest-xdist... I realized just to split pytest tests into groups. Luckily there is even library for this - (pytest-split)[https://pypi.org/project/pytest-split/]. Each group of tests we will be running in its own raised docker-compose group of containers, each process would be having its own db instance, redis instance and whatever else side car dependency needed. Thus, it would be perfect imitation for tests being run still in sequence instead of being run in parallel :) The only little problem we need to solve after that, with having merged coverage and junit output results for out Github Actions GUI.
+Instead of using pytest-xdist... I realized just to split pytest tests into groups. Luckily there is even library for this - [pytest-split](https://pypi.org/project/pytest-split/]. Each group of tests we will be running in its own raised docker-compose group of containers, each process would be having its own db instance, redis instance and whatever else side car dependency needed. Thus, it would be perfect imitation for tests being run still in sequence instead of being run in parallel :) The only little problem we need to solve after that, with having merged coverage and junit output results for out Github Actions GUI.
 
 Since we are in Python, the solution is implemented in python as well, with the help of `subprocess` library for multiprocessing and `argparse` library to have better self documented interface.
 
