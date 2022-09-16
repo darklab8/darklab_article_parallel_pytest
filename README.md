@@ -152,7 +152,7 @@ Firstly we raise self-hosted Github Actions runner with available docker-compose
 
 As latest step, we need to invoke our pipeline:
 
-* Just pushing any code to master branch of out repository with installed parallel_pytest or opening pull request to merge commits to master, or requesting new workflow at Actions interface :) You see full code of [a solution here](https://github.com/darklab8/darklab_article_parallel_pytest)
+* Just pushing any code to master branch of our repository with installed parallel_pytest or opening pull request to merge commits to master, or requesting new workflow at Actions interface :) You see full code of [a solution here](https://github.com/darklab8/darklab_article_parallel_pytest)
 
 under the hood it does:
 
