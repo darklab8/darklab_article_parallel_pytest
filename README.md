@@ -1,8 +1,16 @@
 # Parallel CI agnostic python testing in Github Actions
 
+## Prerequisites and recomendations
+
+* Docker and docker-compose usage, recommending [Docker Deep Dive by Nigel Pulton](https://www.oreilly.com/library/view/docker-deep-dive/9781800565135/) to get necessary level
+* Python at scripting level, recommending [Python in simple packages by Lubanovic](https://www.amazon.com/Introducing-Python-Modern-Computing-Packages/dp/1492051365)
+* Python paralellism stuff, recommending `Chapter 6: Concurrency` out of [Expert Python programming by Jaworski](https://www.amazon.com/Expert-Python-Programming-practices-programming/dp/1801071101)
+* Knowing what for testing is needed, recommending [Unit testing principles, practices and patterns by Khorikov](https://www.amazon.com/Unit-Testing-Principles-Practices-Patterns/dp/1617296279)
+* Knowing what for CI tools like Github Actions or Gitlab CI are needed
+
 ## Problem:
 
-we have around 5000 unit and integration tests in a Django backend API project, which we test with pytest. They take half an hour to finish themselves locally or in Github Actions CI. As result, they produce coverage.xml and junit.xml exported into GA plugins to visualize results with better GUI. We wish to run them faster.
+we have around 5000 unit and integration tests in a Django backend API project, which we test with pytest. They take half an hour to finish themselves locally or in Github Actions (GA) CI. As result, they produce coverage.xml and junit.xml exported into GA plugins to visualize results with better GUI. We wish to run them faster.
 
 ## Introduction to environment
 
@@ -52,7 +60,7 @@ As disadvantages:
 
 **Important note**
 
-As artifacts of a test run, we produce `unit.xml`, and `coverage.xml` files, to ensure having published passed tests into Github Actions graphical interface, and coverage results. It allows faster seeing logs to specific broken tests without digging through raw log output.
+As artifacts of a test run, we produce `unit.xml`, and `coverage.xml` files, to ensure having published passed tests into Github Actions graphical interface, and coverage results. It allows faster seeing logs to specific broken tests without digging through raw log output and seeing testing coverage metrics changes.
 
 ```yaml
       - name: Publish Unit Test Results
@@ -75,11 +83,11 @@ As artifacts of a test run, we produce `unit.xml`, and `coverage.xml` files, to 
 
 ## Task definition
 
-Usually, people assume to use [pytest-xdist](https://pypi.org/project/pytest-xdist/) in the Python ecosystem in order to have tests runnable in parallel. I was offered to collect flappy tests data in datadog, and after having them analyzed to fix them so that nothing would prevent their running in pytest-xdist. We needed to run our tests faster :)
+Usually, people assume to use [pytest-xdist](https://pypi.org/project/pytest-xdist/) in the Python ecosystem in order to have tests runnable in parallel. I was offered to collect flappy tests data in [datadog](https://www.datadoghq.com/), and after having them analyzed to fix them so that nothing would prevent their running in pytest-xdist. We needed to run our tests faster :)
 
 ## Analysis
 
-First, we collected broken tests wrongly working Django translation, which is dependent on Linux Gettext. According to (found information)[https://www.gnu.org/software/gettext/manual/gettext.html] - gettext is not really thread-safe:
+First, we collected broken tests wrongly working Django translation, which is dependent on Linux Gettext. According to [found information](https://www.gnu.org/software/gettext/manual/gettext.html) - gettext is not really thread-safe:
 
 > The GNU Gettext runtime supports only one locale per process. It is not thread-safe to use multiple locales and encodings in the same process. This is perfectly fine for applications that interact directly with a single user like most GUI applications, but is problematic for services and servers.
 
@@ -118,34 +126,45 @@ It allows us to make next conclusion, that if we are using pytest-xdist:
 
 ## Solution
 
-Instead of using pytest-xdist... I realized just to split pytest tests into groups. Luckily there is even a library for this - [pytest-split](https://pypi.org/project/pytest-split/]. Each group of tests we will be running in its own raised docker-compose group of containers, each process would be having its own db instance, redis instance and whatever else side car dependency needed. Thus, it would be a perfect imitation for tests being run still in sequence instead of being run in parallel :) The only little problem we need to solve after that, with having merged coverage and junit output results for our Github Actions GUI.
+Instead of using pytest-xdist... I realized just to split pytest tests into groups. Luckily there is even a library for this - [pytest-split](https://pypi.org/project/pytest-split/). Each group of tests we will be running in its own raised docker-compose group of containers, each process would be having its own db instance, redis instance and whatever else side car dependency needed. Thus, it would be a perfect imitation for tests being run still in sequence instead of being run in parallel :) The only little problem we need to solve after that, with having merged coverage and junit output results for our Github Actions GUI.
 
 Since we are in Python, the solution is implemented in python as well, with the help of `subprocess` library for multiprocessing and `argparse` library to have better self documented interface.
 
 ##### 1. Github Actions Self hosted runner
 
-Firstly we raise self-hosted Github Actions runner with available docker-compose inside. Since Github Actions installing documentation is offering only installation to Linux manually and clearly lacking in this regard in comparison to Gitlab CI which offers its runnes installations ready solutions for docker and even kubernetes, we write our own solution to automate default Github Actions installation through `pyexpect` library, and thus having it container compatible as well. Command to quickly raise GA runner becomes `TOKEN=your_github_token_to_register_runner docker-compose up`. See full code in [repository](https://github.com/darklab8/darklab_github_ci) for reference.
+Firstly we raise self-hosted Github Actions runner with available docker-compose inside. Since Github Actions installing documentation is offering only installation to Linux manually and clearly lacking in this regard in comparison to Gitlab CI which offers its runnes installations ready solutions for docker and even kubernetes, we write our own solution to automate default Github Actions installation through `pyexpect` library, and thus having it containerized as well. Command to quickly raise GA runner becomes `TOKEN=your_github_token_to_register_runner docker-compose up`. See full code in [repository](https://github.com/darklab8/darklab_github_ci) for reference.
 
-* Cloning to some machine with installed docker and docker-compose https://github.com/darklab8/darklab_github_ci
-* TOKEN=your_github_token_to_register_runner docker-compose up
+* [Installing docker for example at ubuntu](https://docs.docker.com/engine/install/ubuntu/)
+* [Installing docker-compose](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-compose-on-ubuntu-20-04)
+* `git clone https://github.com/darklab8/darklab_github_ci.git`
+* `TOKEN=your_github_token_to_register_runner docker-compose up -d` # in order to launch
+* check with `docker-compose logs` to check for being succesful
+  ```
+  app_1   | python3: running listener
+  app_1   | 
+  app_1   | √ Connected to GitHub
+  app_1   | 
+  app_1   | Current runner version: '2.294.0'
+  app_1   | 2022-09-16 21:39:58Z: Listening for Jobs
+  ```
 
 ##### 2. Triggering CI
 
 As latest step, we need to invoke our pipeline:
 
-* Just pushing any code to master or opening pull request to merge commits to master :) You see full code of [a solution here](https://github.com/darklab8/darklab_article_parallel_pytest)
+* Just pushing any code to master branch of out repository with installed parallel_pytest or opening pull request to merge commits to master, or requesting new workflow at Actions interface :) You see full code of [a solution here](https://github.com/darklab8/darklab_article_parallel_pytest)
 
 under the hood it does:
 
 ```
-checking out code if repository into CI run
+checking out code if repository in CI run
 
 building if necessary image and assigning it tag name
 
 opening multiple sub processes and each runs its own docker-compose with unique -p project_name in order to avoid container reusage.
 results are outputed as reports/junit_{number of process}.xml and reports/.coverage_{number of process}.xml
 
-we run script to merge resulting coverage results into .coverage file and junit results into single file as well
+we run script to merge multiple coverage results and junit results into single files
 
 publishing results into Github GUI
 ```
@@ -158,6 +177,7 @@ or just run tests with less amount of selected tests.
 ## Conclusion
 
 * Our tests are now runnable in parallel and we can enjoy having them run faster:
+
   * 1 Core = 24 minutes 40 secs (no parallelism)
   * 2 core = 15 minutes 31 secs
   * 6 core = 8 minutes (pc with intel i5-10400 6 core/12threaded processor)
@@ -165,3 +185,9 @@ or just run tests with less amount of selected tests.
 * We kept code running with sidecar containers with postgresql, redis or anything else that is needed, thus having less difference between dev and prod. Thus keeping following rule 10th rule of [The Twelve-Factor app](https://12factor.net/)
 * We received a solution universal enough to be reapplied to any other repository needing to be sped up
 * We kept our paradigm of being CI agnostic and can replicate our solution easily locally.
+
+## Future possible steps
+
+* Refactoring code to be more universal to become third party library reusable for any other repo
+* Probably making parallel_pytest script available as compiled binary in golang? In order to be available as lightweight dependency installations free solution reusable at any repository with minimal time and weight to add
+* Same principles to applications testing can be applied to any other language, as long as solution to split tests is found
