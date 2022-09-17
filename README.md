@@ -184,7 +184,7 @@ or just run tests with less amount of selected tests.
 * We haven't changed anything of a working code to make it more multithreading/multiprocessing safer. We solved the issue at a level above it. We don't need to keep in the future our code any safer than it is already.
 * We kept code running with sidecar containers with postgresql, redis or anything else that is needed, thus having less difference between dev and prod. Thus keeping following rule 10th rule of [The Twelve-Factor app](https://12factor.net/)
 * We received a solution universal enough to be reapplied to any other repository needing to be sped up
-* We kept our paradigm of being CI agnostic and can replicate our solution easily locally.
+* We kept our paradigm of being CI agnostic and can run our solution easily locally.
 
 ## Future possible steps
 
