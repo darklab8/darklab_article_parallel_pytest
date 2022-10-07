@@ -115,7 +115,7 @@ pytest --dist=each --tx socket=localhost:8889 --tx socket=localhost:8890
 ```
 
 Further collecting data from datadog, there were tests broken because tests used same cache storage in shared `redis`
-Other tests became broken because of an asserted count of SQL requests made by ORM in one of the tests. It made more than necessary because another process was running query to db at the same time. Which allowed concluding that having a shared sidecar container `db`, made tests broken just because they use the same db instance.
+Other tests became broken because of an asserted count of SQL requests made by ORM in one of the tests. it made it clear that tests were breaking because another process was running query to db at the same time. Which allowed concluding that having a shared sidecar container `db`, made tests broken just because they use the same db instance.
 
 I received recommendations to fix caching by using in-memory solution, but it became obvious to me, that we would be encountering one or other new reasons why tests are broken again and again.
 
